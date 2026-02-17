@@ -1,1 +1,64 @@
+%% --- GRAFICADOR GENÉRICO DE GPS ---
+clear; clc; close all;
 
+% 1. ABRIR VENTANA DE SELECCIÓN DE ARCHIVO
+disp('Por favor, selecciona tu archivo de Excel o CSV...');
+[nombreArchivo, rutaArchivo] = uigetfile({'.xlsx;.xls;.csv', 'Archivos de Datos (.xlsx, *.csv)'}, ...
+                                         'Selecciona tu archivo de coordenadas');
+
+if isequal(nombreArchivo, 0)
+    disp('Cancelado por el usuario.');
+    return;
+end
+
+archivoCompleto = fullfile(rutaArchivo, nombreArchivo);
+
+% 2. LEER DATOS
+try
+    % readtable es inteligente y detecta si es Excel o CSV
+    tablaDatos = readtable(archivoCompleto); 
+    
+    % Convertir a matriz para facilitar el manejo (por si hay encabezados)
+    % Si tu archivo TIENE encabezados, MATLAB los usará como nombres.
+    % Si NO TIENE encabezados, usará la primera fila como datos.
+    datos = table2array(tablaDatos);
+    
+    % --- CONFIGURACIÓN DE COLUMNAS ---
+    % IMPORTANTE: Ajusta estos números si tus columnas están en otro orden.
+    % Por lo general: 1 = Latitud, 2 = Longitud, 3 = Altitud
+    columna_latitud = 1; 
+    columna_longitud = 2;
+    
+    % Extraer coordenadas
+    lat = datos(:, columna_latitud);
+    lon = datos(:, columna_longitud);
+    
+    % Filtrar posibles ceros o errores (común en GPS al iniciar)
+    idx_validos = (lat ~= 0) & (lon ~= 0);
+    lat = lat(idx_validos);
+    lon = lon(idx_validos);
+
+    % 3. GRAFICAR
+    figure('Name', ['Trayectoria: ' nombreArchivo], 'NumberTitle', 'off');
+    plot(lon, lat, 'b.-', 'LineWidth', 1.5, 'MarkerSize', 10);
+    
+    % Formato del gráfico
+    grid on;
+    axis equal; % VITAL para que el mapa no se vea deformado
+    
+    xlabel('Longitud (Eje X)');
+    ylabel('Latitud (Eje Y)');
+    title(['Mapa de Trayectoria GPS - ' nombreArchivo], 'Interpreter', 'none');
+    
+    % Añadir un punto de inicio (círculo verde) y fin (cuadrado rojo)
+    hold on;
+    plot(lon(1), lat(1), 'go', 'MarkerFaceColor', 'g', 'MarkerSize', 8, 'DisplayName', 'Inicio');
+    plot(lon(end), lat(end), 'rs', 'MarkerFaceColor', 'r', 'MarkerSize', 8, 'DisplayName', 'Fin');
+    legend('Trayectoria', 'Inicio', 'Fin');
+    hold off;
+
+    disp('Gráfica generada exitosamente.');
+
+catch ME
+    errordlg(['Hubo un error al leer el archivo: ' ME.message], 'Error de Lectura');
+end
